@@ -1,4 +1,7 @@
 /* desktop.css - additional desktop styling */
-/* keep small and focused */
 .dock-item:focus,.icon:focus{outline:2px solid rgba(110,231,183,0.18)}
-.window[data-app="terminal"] .window-body{font-family:monospace;background:#071321;padding:14px;color:#dfffe0}
+.window[data-app="terminal"] .window-body{font-family:monospace;background:rgba(0,0,0,0.06);padding:14px;color:var(--text)}
+
+.settings-row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.settings-row label{min-width:140px}
+.switch{display:inline-flex;align-items:center;gap:8px}

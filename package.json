@@ -1,0 +1,12 @@
+{
+  "name": "privacyc",
+  "version": "1.0.0",
+  "description": "PrivacyC demo desktop with TypeScript build and UI animations",
+  "scripts": {
+    "build": "tsc",
+    "start": "node -e \"require('http').createServer((req,res)=>{res.end('Use a static server to view index.html')}).listen(8080)\""
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
