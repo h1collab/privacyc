@@ -1,267 +1,116 @@
-// Basic behaviors: z-index, drag, resize, traffic buttons, dock, settings, time, persistent settings
-(function(){
-  const desktop = document.getElementById('desktop');
-  const windows = () => Array.from(document.querySelectorAll('.window'));
-  const dock = document.querySelector('.dock');
-  const settingsBtn = document.getElementById('settingsBtn');
-  const settingsPanel = document.getElementById('settings');
-  const closeSettings = document.getElementById('closeSettings');
-  const customCursorSel = document.getElementById('customCursor');
-  const showDockCB = document.getElementById('showDock');
-  const dockMagnify = document.getElementById('dockMagnify');
-  const showIconsCB = document.getElementById('showIcons');
-  const darkModeCB = document.getElementById('darkMode');
-  const timeSpan = document.getElementById('time');
-  const checkUpdatesBtn = document.getElementById('checkUpdates');
-  const toast = document.getElementById('toast');
-
-  let zTop = 10;
-  const APP_VERSION = '1.0';
-
-  /* Utilities */
-  function showToast(msg, timeout=2500){
-    toast.textContent = msg;
-    toast.classList.remove('hidden');
-    clearTimeout(toast._t);
-    toast._t = setTimeout(()=> toast.classList.add('hidden'), timeout);
+// app.js — boot animation, window manager, simple encryption using Web Crypto API
+(() => {
+  const boot = document.getElementById('boot-overlay');
+  const progressBar = document.querySelector('.boot-progress::after');
+  // Simulate boot progress
+  function setProgress(p){
+    const el = document.querySelector('.boot-progress');
+    el.style.setProperty('--progress', p);
+    el.querySelector('::after');
   }
 
-  function saveSettings(){
-    const settings = {
-      cursor: customCursorSel.value,
-      showDock: showDockCB.checked,
-      dockMagnify: dockMagnify.value,
-      showIcons: showIconsCB.checked,
-      darkMode: darkModeCB.checked
+  // Use realtime updates by manipulating style rule (simpler approach)
+  const progressFill = document.querySelector('.boot-progress');
+  function animateBoot(){
+    let p = 0;
+    const after = progressFill;
+    const id = setInterval(()=>{
+      p += Math.random()*12;
+      if(p>=100) p = 100;
+      after.style.setProperty('--w', p+"%");
+      // set visual width via transform
+      after.querySelector('::after');
+      // The simple workable approach: change background-size via inline background image gradient stop
+      after.style.background = `linear-gradient(90deg,var(--accent) ${p}%, rgba(255,255,255,0.06) ${p}% )`;
+      if(p>=100){
+        clearInterval(id);
+        // fade out
+        boot.style.transition='opacity 0.9s ease';
+        boot.style.opacity='0';
+        setTimeout(()=>boot.remove(),1100);
+      }
+    },300);
+  }
+
+  // Hide cursor during boot
+  boot.classList.add('hide-cursor');
+  animateBoot();
+
+  // Minimal window system
+  const windows = document.getElementById('windows');
+  function createWindow(title, html){
+    const w = document.createElement('div');
+    w.className='window';
+    w.style.left='calc(50% - 260px)';
+    w.style.top='80px';
+    w.innerHTML=`<div class="titlebar"><div class="title">${title}</div><div class="controls"><button class="close">✕</button></div></div><div class="content">${html}</div>`;
+    windows.appendChild(w);
+    w.querySelector('.close').addEventListener('click',()=>w.remove());
+    // simple drag
+    const titlebar = w.querySelector('.titlebar');
+    let dragging=false,ox=0,oy=0;
+    titlebar.addEventListener('mousedown',e=>{dragging=true;ox=e.clientX-w.offsetLeft;oy=e.clientY-w.offsetTop});
+    document.addEventListener('mousemove',e=>{if(!dragging) return;w.style.left=(e.clientX-ox)+'px';w.style.top=(e.clientY-oy)+'px'});
+    document.addEventListener('mouseup',()=>dragging=false);
+    return w;
+  }
+
+  // Dock / icons
+  document.querySelectorAll('[data-app]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const app = btn.dataset.app;
+      if(app==='finder') createWindow('Finder','<p>Welcome to Zorixos Finder — this is a demo folder UI.</p>');
+      if(app==='notes') createWindow('Notes','<textarea style="width:100%;height:220px">Take notes...</textarea>');
+      if(app==='encrypt') createWindow('Encrypt','<div><h3>Local Encryption</h3><p>Type text to encrypt locally with a passphrase.</p><textarea id="enc-input" style="width:100%;height:100px"></textarea><input id="enc-pass" type="password" placeholder="passphrase" style="width:100%;margin-top:6px"/><br/><button id="enc-btn">Encrypt</button><button id="dec-btn">Decrypt</button><pre id="enc-out"></pre></div>');
+      setTimeout(bindCryptoButtons,50);
+    });
+  });
+
+  // Web Crypto helpers (AES-GCM with PBKDF2)
+  async function deriveKey(pass, salt){
+    const enc = new TextEncoder();
+    const keyMaterial = await window.crypto.subtle.importKey('raw', enc.encode(pass), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({name:'PBKDF2',salt:enc.encode(salt),iterations:100000,hash:'SHA-256'}, keyMaterial, {name:'AES-GCM',length:256}, false, ['encrypt','decrypt']);
+  }
+  async function encryptText(plain, pass){
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await deriveKey(pass, Array.from(salt).join(','));
+    const enc = new TextEncoder();
+    const ct = await crypto.subtle.encrypt({name:'AES-GCM',iv}, key, enc.encode(plain));
+    // Pack salt+iv+ciphertext as base64 JSON
+    return btoa(JSON.stringify({salt:Array.from(salt),iv:Array.from(iv),ct:Array.from(new Uint8Array(ct))}));
+  }
+  async function decryptText(blobB64, pass){
+    const raw = JSON.parse(atob(blobB64));
+    const salt = new Uint8Array(raw.salt);
+    const iv = new Uint8Array(raw.iv);
+    const ct = new Uint8Array(raw.ct).buffer;
+    const key = await deriveKey(pass, Array.from(salt).join(','));
+    const pt = await crypto.subtle.decrypt({name:'AES-GCM',iv}, key, ct);
+    return new TextDecoder().decode(pt);
+  }
+
+  function bindCryptoButtons(){
+    const encBtn = document.getElementById('enc-btn');
+    const decBtn = document.getElementById('dec-btn');
+    if(!encBtn) return;
+    encBtn.onclick = async ()=>{
+      const text = document.getElementById('enc-input').value;
+      const pass = document.getElementById('enc-pass').value || 'pass';
+      try{const out = await encryptText(text, pass);document.getElementById('enc-out').textContent = out}catch(e){document.getElementById('enc-out').textContent = 'Encrypt error:'+e}
     };
-    localStorage.setItem('zorix.settings', JSON.stringify(settings));
-  }
-  function loadSettings(){
-    try{
-      const s = JSON.parse(localStorage.getItem('zorix.settings')) || {};
-      if(s.cursor) customCursorSel.value = s.cursor;
-      if(typeof s.showDock === 'boolean') showDockCB.checked = s.showDock;
-      if(s.dockMagnify) dockMagnify.value = s.dockMagnify;
-      if(typeof s.showIcons === 'boolean') showIconsCB.checked = s.showIcons;
-      if(typeof s.darkMode === 'boolean') darkModeCB.checked = s.darkMode;
-    }catch(e){ console.warn(e); }
+    decBtn.onclick = async ()=>{
+      const raw = document.getElementById('enc-out').textContent.trim();
+      const pass = document.getElementById('enc-pass').value || 'pass';
+      try{const out = await decryptText(raw, pass);document.getElementById('enc-out').textContent = out}catch(e){document.getElementById('enc-out').textContent = 'Decrypt error:'+e}
+    };
   }
 
-  /* Time */
-  function updateTime(){
-    const d = new Date();
-    timeSpan.textContent = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-  }
-  setInterval(updateTime, 30*1000);
-  updateTime();
+  // After boot, reveal menu and dock
+  setTimeout(()=>{
+    document.getElementById('menubar').style.opacity=1;
+    document.getElementById('dock').style.opacity=1;
+  },1200);
 
-  /* Focus */
-  function focusWindow(win){
-    zTop += 1;
-    win.style.zIndex = zTop;
-    win.classList.add('active');
-    windows().forEach(w=>{ if(w!==win) w.classList.remove('active'); });
-    // persist focused window id
-    try{ localStorage.setItem('zorix.focus', win.dataset.id||win.dataset.title); }catch(e){}
-  }
-
-  /* Restore windows state */
-  function persistWindowState(w){
-    try{
-      const id = w.dataset.id || w.dataset.title;
-      const state = {left: w.style.left, top: w.style.top, width: w.style.width, height: w.style.height, display: w.style.display};
-      localStorage.setItem('zorix.win.'+id, JSON.stringify(state));
-    }catch(e){}
-  }
-  function restoreWindows(){
-    windows().forEach(w=>{
-      const id = w.dataset.id || w.dataset.title;
-      try{
-        const s = JSON.parse(localStorage.getItem('zorix.win.'+id));
-        if(s){ Object.assign(w.style, {left: s.left||w.style.left, top: s.top||w.style.top, width: s.width||w.style.width, height: s.height||w.style.height, display: s.display||''}); }
-      }catch(e){}
-    });
-  }
-
-  // Initialize windows
-  function initWindows(){
-    windows().forEach(w=>{
-      w.style.zIndex = ++zTop;
-      const titlebar = w.querySelector('.titlebar');
-      const resizer = w.querySelector('.resizer');
-      const closeBtn = w.querySelector('.close');
-      const minBtn = w.querySelector('.minimize');
-      const zoomBtn = w.querySelector('.zoom');
-
-      // Click to focus
-      w.addEventListener('pointerdown', ()=> focusWindow(w));
-
-      // Dragging
-      let dragging = null;
-      titlebar.addEventListener('pointerdown', (e)=>{
-        if(e.target.closest('.traffic')) return;
-        dragging = {
-          startX: e.clientX,
-          startY: e.clientY,
-          origLeft: parseInt(w.style.left || w.getBoundingClientRect().left,10),
-          origTop: parseInt(w.style.top || w.getBoundingClientRect().top,10)
-        };
-        w.setPointerCapture(e.pointerId);
-      });
-      titlebar.addEventListener('pointermove', (e)=>{
-        if(!dragging) return;
-        const dx = e.clientX - dragging.startX;
-        const dy = e.clientY - dragging.startY;
-        w.style.left = (dragging.origLeft + dx) + 'px';
-        w.style.top = (dragging.origTop + dy) + 'px';
-      });
-      titlebar.addEventListener('pointerup', (e)=>{ dragging = null; persistWindowState(w); });
-
-      // Resize
-      let resizing = null;
-      resizer.addEventListener('pointerdown', (e)=>{
-        resizing = {
-          startX: e.clientX,
-          startY: e.clientY,
-          startW: w.offsetWidth,
-          startH: w.offsetHeight
-        };
-        w.setPointerCapture(e.pointerId);
-      });
-      resizer.addEventListener('pointermove', (e)=>{
-        if(!resizing) return;
-        const dx = e.clientX - resizing.startX;
-        const dy = e.clientY - resizing.startY;
-        w.style.width = Math.max(200, resizing.startW + dx) + 'px';
-        w.style.height = Math.max(120, resizing.startH + dy) + 'px';
-      });
-      resizer.addEventListener('pointerup', ()=>{ resizing = null; persistWindowState(w); });
-
-      // Traffic buttons
-      closeBtn.addEventListener('click', ()=> { w.remove(); showToast(w.dataset.title + ' 已关闭'); });
-      minBtn.addEventListener('click', ()=> { w.style.display = 'none'; persistWindowState(w); });
-      zoomBtn.addEventListener('click', ()=>{
-        if(w.classList.contains('max')){
-          // restore
-          w.style.left = w.dataset._left || w.style.left;
-          w.style.top = w.dataset._top || w.style.top;
-          w.style.width = w.dataset._width || w.style.width;
-          w.style.height = w.dataset._height || w.style.height;
-          w.classList.remove('max');
-        } else {
-          // save and maximize
-          w.dataset._left = w.style.left;
-          w.dataset._top = w.style.top;
-          w.dataset._width = w.style.width;
-          w.dataset._height = w.style.height;
-          w.style.left = '12px';
-          w.style.top = '40px';
-          w.style.width = (window.innerWidth - 24) + 'px';
-          w.style.height = (window.innerHeight - 120) + 'px';
-          w.classList.add('max');
-        }
-        persistWindowState(w);
-      });
-
-      // Double-click titlebar to zoom
-      titlebar.addEventListener('dblclick', ()=>{
-        const zoom = w.querySelector('.zoom'); if(zoom) zoom.click();
-      });
-    });
-  }
-
-  // Dock launch: show/hide windows by data-title
-  dock.addEventListener('click', (e)=>{
-    const btn = e.target.closest('.dock-item');
-    if(!btn) return;
-    const name = btn.dataset.app;
-    const win = Array.from(document.querySelectorAll('.window')).find(w=>w.dataset.title===name);
-    if(win){
-      if(win.style.display === 'none') win.style.display = '';
-      focusWindow(win);
-    }
-  });
-
-  // Desktop icons double click open
-  document.getElementById('icons').addEventListener('dblclick', (e)=>{
-    const btn = e.target.closest('.desktop-icon');
-    if(!btn) return;
-    const app = btn.dataset.app;
-    const win = Array.from(document.querySelectorAll('.window')).find(w=>w.dataset.title===app);
-    if(win){ if(win.style.display==='none') win.style.display=''; focusWindow(win); }
-  });
-
-  // Settings panel
-  settingsBtn.addEventListener('click', ()=> settingsPanel.classList.toggle('hidden'));
-  closeSettings.addEventListener('click', ()=> settingsPanel.classList.add('hidden'));
-
-  // Apply UI settings
-  function applySettings(){
-    // cursor
-    const cur = customCursorSel.value;
-    document.documentElement.classList.remove('cursor-apple','cursor-large');
-    if(cur==='apple') document.documentElement.classList.add('cursor-apple');
-    if(cur==='large') document.documentElement.classList.add('cursor-large');
-
-    // dock
-    dock.style.display = showDockCB.checked ? '' : 'none';
-    dock.style.setProperty('--dock-magnify', dockMagnify.value);
-
-    // icons
-    document.getElementById('icons').style.display = showIconsCB.checked ? 'block' : 'none';
-
-    // dark
-    if(darkModeCB.checked) document.body.classList.add('dark'); else document.body.classList.remove('dark');
-
-    saveSettings();
-  }
-
-  // Listen controls
-  [customCursorSel, showDockCB, dockMagnify, showIconsCB, darkModeCB].forEach(el=> el.addEventListener('change', applySettings));
-
-  // Keyboard shortcuts
-  window.addEventListener('keydown', (e)=>{
-    // ESC to close settings or blur
-    if(e.key==='Escape'){ settingsPanel.classList.add('hidden'); const active = document.activeElement; if(active && (active.tagName==='TEXTAREA' || active.tagName==='INPUT')) active.blur(); }
-    // Cmd/Ctrl+H hide all windows
-    if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='h'){ windows().forEach(w=> w.style.display='none'); }
-    // Cmd+Space for spotlight (simulate)
-    if(e.key===' ' && (e.metaKey||e.ctrlKey)){ e.preventDefault(); showToast('Spotlight: 搜索（模拟）'); }
-  });
-
-  // Check updates (simulated)
-  checkUpdatesBtn.addEventListener('click', ()=>{
-    showToast('���在检查更新...');
-    setTimeout(()=>{
-      // in real app we'd fetch releases; here we simulate
-      const latest = APP_VERSION; // simulated
-      if(latest === APP_VERSION) showToast('已是最新版本: ' + APP_VERSION);
-      else showToast('发现新版本: ' + latest);
-    }, 900);
-  });
-
-  // Clicking desktop unfocuses windows
-  desktop.addEventListener('pointerdown', (e)=>{
-    if(e.target === desktop) windows().forEach(w=>w.classList.remove('active'));
-  });
-
-  // Make sure pointer events don't cause selection
-  document.addEventListener('dragstart', e=> e.preventDefault());
-
-  // Prevent accidental text selection during drag
-  document.addEventListener('selectstart', e=>{
-    if(e.target.closest('.titlebar')) e.preventDefault();
-  });
-
-  // Restore
-  loadSettings();
-  initWindows();
-  restoreWindows();
-  applySettings();
-
-  // Accessibility: focus last focused window on load
-  try{
-    const last = localStorage.getItem('zorix.focus');
-    if(last){ const w = Array.from(document.querySelectorAll('.window')).find(x=> x.dataset.id===last || x.dataset.title===last); if(w) focusWindow(w); }
-  }catch(e){}
 })();

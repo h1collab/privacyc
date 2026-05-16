@@ -1,104 +1,43 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>ZorixOS — mac-like window simulator</title>
-  <link rel="stylesheet" href="styles.css" />
+  <title>Zorixos — macOS-like Web Desktop</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="menubar" role="banner">
-    <div class="menubar-left" aria-hidden="false"> ZorixOS</div>
-    <div class="menubar-center">Finder  编辑  窗口  帮助</div>
-    <div class="menubar-right">
-      <button id="spotlight" class="icon-btn" aria-label="Spotlight">🔍</button>
-      <span id="time" aria-live="polite"></span>
-      <button id="settingsBtn" aria-label="Settings">⚙︎</button>
+  <!-- Boot overlay (starts visible, then fades) -->
+  <div id="boot-overlay" class="boot">
+    <div class="boot-center">
+      <div class="apple-logo"></div>
+      <div id="boot-progress" class="boot-progress"></div>
     </div>
   </div>
 
-  <main id="desktop" tabindex="0" role="main" aria-label="Desktop area">
-    <!-- Desktop icons (double-click to open) -->
-    <div id="icons" aria-hidden="false">
-      <button class="desktop-icon" data-app="Finder" aria-label="Finder">📁<span>Finder</span></button>
-      <button class="desktop-icon" data-app="Notes" aria-label="Notes">📝<span>Notes</span></button>
+  <!-- Menu bar -->
+  <div id="menubar" class="menubar">
+    <div class="menubar-left">Zorixos</div>
+    <div class="menubar-right">h1collab</div>
+  </div>
+
+  <!-- Desktop -->
+  <div id="desktop" class="desktop">
+    <div id="dock" class="dock">
+      <button class="dock-item" data-app="finder">Finder</button>
+      <button class="dock-item" data-app="notes">Notes</button>
+      <button class="dock-item" data-app="encrypt">Encrypt</button>
     </div>
 
-    <!-- Sample windows -->
-    <section class="window" data-title="Finder" style="left:80px;top:100px;" data-id="finder">
-      <div class="titlebar" role="toolbar">
-        <div class="traffic">
-          <button class="close" aria-label="Close window"></button>
-          <button class="minimize" aria-label="Minimize window"></button>
-          <button class="zoom" aria-label="Zoom window"></button>
-        </div>
-        <div class="title">Finder</div>
-      </div>
-      <div class="content">
-        <h1>Welcome to ZorixOS</h1>
-        <p>这是一个 mac 风格窗口模拟器。拖动标题栏移动窗口，使用右下角抓手改变大小。</p>
-      </div>
-      <div class="resizer" aria-hidden="true"></div>
-    </section>
+    <!-- Example desktop icon -->
+    <div class="icon" data-app="finder" tabindex="0">
+      <div class="icon-img">📁</div>
+      <div class="icon-label">Finder</div>
+    </div>
+  </div>
 
-    <section class="window" data-title="Notes" style="left:420px;top:160px;" data-id="notes">
-      <div class="titlebar">
-        <div class="traffic">
-          <button class="close" aria-label="Close window"></button>
-          <button class="minimize" aria-label="Minimize window"></button>
-          <button class="zoom" aria-label="Zoom window"></button>
-        </div>
-        <div class="title">Notes</div>
-      </div>
-      <div class="content">
-        <textarea placeholder="Type notes..." aria-label="Notes editor"></textarea>
-      </div>
-      <div class="resizer" aria-hidden="true"></div>
-    </section>
-  </main>
-
-  <nav class="dock" role="navigation" aria-label="Dock">
-    <button class="dock-item" data-app="Finder" aria-label="Finder">📁</button>
-    <button class="dock-item" data-app="Notes" aria-label="Notes">📝</button>
-  </nav>
-
-  <aside id="settings" class="panel hidden" role="dialog" aria-modal="true" aria-label="Settings">
-    <h2>ZorixOS 设置</h2>
-    <div class="setting-row">
-      <label for="customCursor">自定义光标</label>
-      <select id="customCursor">
-        <option value="none">系统默认</option>
-        <option value="apple">苹果箭头（推荐）</option>
-        <option value="large">大号箭头</option>
-      </select>
-    </div>
-    <div class="setting-row">
-      <label for="showDock">显示 Dock</label>
-      <input type="checkbox" id="showDock" checked />
-    </div>
-    <div class="setting-row">
-      <label for="dockMagnify">Dock 放大</label>
-      <input id="dockMagnify" type="range" min="0" max="1" step="0.1" value="0.6" />
-    </div>
-    <div class="setting-row">
-      <label for="showIcons">显示 桌面图标</label>
-      <input type="checkbox" id="showIcons" checked />
-    </div>
-    <div class="setting-row">
-      <label for="darkMode">深色模式（自动）</label>
-      <input type="checkbox" id="darkMode" />
-    </div>
-    <div class="setting-row">
-      <button id="checkUpdates">检查更新</button>
-      <span id="version">ZorixOS 1.0</span>
-    </div>
-
-    <div class="panel-actions">
-      <button id="closeSettings">关闭</button>
-    </div>
-  </aside>
-
-  <div id="toast" aria-live="polite" class="toast hidden"></div>
+  <!-- App windows container -->
+  <div id="windows"></div>
 
   <script src="app.js"></script>
 </body>
