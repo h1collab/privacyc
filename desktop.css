@@ -1,0 +1,4 @@
+/* desktop.css - additional desktop styling */
+/* keep small and focused */
+.dock-item:focus,.icon:focus{outline:2px solid rgba(110,231,183,0.18)}
+.window[data-app="terminal"] .window-body{font-family:monospace;background:#071321;padding:14px;color:#dfffe0}
