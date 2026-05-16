@@ -8,16 +8,24 @@
 </head>
 <body>
   <div class="menubar" role="banner">
-    <div class="menubar-left"> ZorixOS</div>
+    <div class="menubar-left" aria-hidden="false"> ZorixOS</div>
+    <div class="menubar-center">Finder  编辑  窗口  帮助</div>
     <div class="menubar-right">
+      <button id="spotlight" class="icon-btn" aria-label="Spotlight">🔍</button>
       <span id="time" aria-live="polite"></span>
       <button id="settingsBtn" aria-label="Settings">⚙︎</button>
     </div>
   </div>
 
   <main id="desktop" tabindex="0" role="main" aria-label="Desktop area">
+    <!-- Desktop icons (double-click to open) -->
+    <div id="icons" aria-hidden="false">
+      <button class="desktop-icon" data-app="Finder" aria-label="Finder">📁<span>Finder</span></button>
+      <button class="desktop-icon" data-app="Notes" aria-label="Notes">📝<span>Notes</span></button>
+    </div>
+
     <!-- Sample windows -->
-    <section class="window" data-title="Finder" style="left:80px;top:100px;">
+    <section class="window" data-title="Finder" style="left:80px;top:100px;" data-id="finder">
       <div class="titlebar" role="toolbar">
         <div class="traffic">
           <button class="close" aria-label="Close window"></button>
@@ -33,7 +41,7 @@
       <div class="resizer" aria-hidden="true"></div>
     </section>
 
-    <section class="window" data-title="Notes" style="left:420px;top:160px;">
+    <section class="window" data-title="Notes" style="left:420px;top:160px;" data-id="notes">
       <div class="titlebar">
         <div class="traffic">
           <button class="close" aria-label="Close window"></button>
@@ -50,19 +58,47 @@
   </main>
 
   <nav class="dock" role="navigation" aria-label="Dock">
-    <button class="dock-item" data-app="Finder">Finder</button>
-    <button class="dock-item" data-app="Notes">Notes</button>
+    <button class="dock-item" data-app="Finder" aria-label="Finder">📁</button>
+    <button class="dock-item" data-app="Notes" aria-label="Notes">📝</button>
   </nav>
 
   <aside id="settings" class="panel hidden" role="dialog" aria-modal="true" aria-label="Settings">
-    <h2>Settings</h2>
-    <label><input type="checkbox" id="customCursor"> 启用自定义光标</label>
-    <label><input type="checkbox" id="showDock" checked> 显示 Dock</label>
-    <label><input type="checkbox" id="darkMode"> 深色模式</label>
+    <h2>ZorixOS 设置</h2>
+    <div class="setting-row">
+      <label for="customCursor">自定义光标</label>
+      <select id="customCursor">
+        <option value="none">系统默认</option>
+        <option value="apple">苹果箭头（推荐）</option>
+        <option value="large">大号箭头</option>
+      </select>
+    </div>
+    <div class="setting-row">
+      <label for="showDock">显示 Dock</label>
+      <input type="checkbox" id="showDock" checked />
+    </div>
+    <div class="setting-row">
+      <label for="dockMagnify">Dock 放大</label>
+      <input id="dockMagnify" type="range" min="0" max="1" step="0.1" value="0.6" />
+    </div>
+    <div class="setting-row">
+      <label for="showIcons">显示 桌面图标</label>
+      <input type="checkbox" id="showIcons" checked />
+    </div>
+    <div class="setting-row">
+      <label for="darkMode">深色模式（自动）</label>
+      <input type="checkbox" id="darkMode" />
+    </div>
+    <div class="setting-row">
+      <button id="checkUpdates">检查更新</button>
+      <span id="version">ZorixOS 1.0</span>
+    </div>
+
     <div class="panel-actions">
       <button id="closeSettings">关闭</button>
     </div>
   </aside>
+
+  <div id="toast" aria-live="polite" class="toast hidden"></div>
 
   <script src="app.js"></script>
 </body>
