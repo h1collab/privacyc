@@ -1,0 +1,24 @@
+name: SSH Remote Execute
+
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: 'Command to execute on remote server'
+        required: true
+        default: 'pwd && ls -la'
+
+jobs:
+  ssh-exec:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Execute command over SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            ${{ github.event.inputs.command }}
