@@ -1,0 +1,36 @@
+name: Generate AI Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: 'Image prompt'
+        required: true
+        default: 'ultra realistic cyberpunk cat, cinematic lighting'
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate image with HF Inference API
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.HF_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"inputs":"${{ github.event.inputs.prompt }}"}' \
+            https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell \
+            --output output.png
+
+          file output.png
+
+      - name: Upload image
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-image
+          path: output.png
