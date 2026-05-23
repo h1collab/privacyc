@@ -1,0 +1,47 @@
+name: AI Image Generator
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: 'Image prompt'
+        required: true
+        default: 'cyberpunk cat'
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+          pip install diffusers transformers accelerate safetensors pillow
+
+      - name: Generate image
+        env:
+          PROMPT: ${{ github.event.inputs.prompt }}
+        run: |
+          python scripts/generate_image.py
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-image
+          path: image/
+
+      - name: Commit image
+        run: |
+          git config --global user.name github-actions
+          git config --global user.email github-actions@github.com
+          git add image/
+          git commit -m "generated ai image" || echo "no changes"
+          git push
