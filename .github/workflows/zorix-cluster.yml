@@ -1,0 +1,27 @@
+name: Zorix Distributed Linux Cluster
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  cluster-check:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        node_id: [1,2,3,4,5,6,7,8,9,10]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node Heartbeat
+        run: |
+          echo "Zorix node ${{ matrix.node_id }} online"
+          uname -a
+          date
